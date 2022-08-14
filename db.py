@@ -3,7 +3,7 @@ import sqlalchemy.orm as alc_orm
 
 import time
 
-import models
+from models import Word, User
 
 # час, 5 часов, 5 дней, 25 дней, 4 месяца
 INTERVALS = [
@@ -15,18 +15,31 @@ INTERVALS = [
 ]
 
 engine = alc.create_engine('sqlite:///bot_db')
-session = alc_orm.sessionmaker(bind=engine)
-s = session()
+session = alc_orm.sessionmaker(bind=engine)()
 
 
 def add_word(user_id: int, word: str, translation: str) -> None:
+    user_exists = not session.query(User).filter_by(id=user_id).first() is None
+    if not user_exists:
+        user = User(id=user_id)
+        session.add(user)
+
     remember_time = round(time.time()) + INTERVALS[0]
 
-    word = models.Word(
+    word = Word(
         user_id=user_id,
         word=word,
         translation=translation,
-        update_time=remember_time,
+        remember_time=remember_time
     )
-    s.add(word)
-    s.commit()
+    session.add(word)
+
+    session.commit()
+
+
+# def check_words_to_remember() -> None:
+#     user_exists = session.query(User).filter_by(id=24123).first() is None
+#     if
+
+
+# check_words_to_remember()

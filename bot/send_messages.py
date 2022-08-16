@@ -1,9 +1,8 @@
-import telegram as tg
 import telegram.ext as tg_ext
 
 import schedule
 
-import db
+from database import db
 
 
 def send_words(bot: tg_ext.Application.bot) -> None:

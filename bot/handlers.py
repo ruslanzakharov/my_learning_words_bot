@@ -1,7 +1,7 @@
 import telegram as tg
 import telegram.ext as tg_ext
 
-import db
+from database import db
 
 START, ENG_WORD, RU_WORD, WORD_CHECK = range(4)
 

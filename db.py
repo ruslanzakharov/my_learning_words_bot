@@ -37,9 +37,43 @@ def add_word(user_id: int, word: str, translation: str) -> None:
     session.commit()
 
 
-# def check_words_to_remember() -> None:
-#     user_exists = session.query(User).filter_by(id=24123).first() is None
-#     if
+def change_is_waiting(user: User) -> bool:
+    user.is_waiting = not user.is_waiting
+    session.commit()
+
+    return user.is_waiting
 
 
-# check_words_to_remember()
+def get_words_to_remember() -> list:
+    words = []
+
+    users = session.query(User).filter_by(is_waiting=False)
+    for user in users:
+        # Слово с самым ранним временем запоминания
+        word = session.query(Word).order_by(Word.remember_time).first()
+        if word.remember_time < time.time():
+            words.append((word, user))
+
+    return words
+
+
+def get_word_to_remember(user_id: int) -> tuple:
+    word = session.query(Word).filter_by(user_id=user_id).\
+        order_by(Word.remember_time).first()
+
+    return word.word, word.translation, word.id
+
+
+def update_word_status(word_id: int, is_right: bool) -> int:
+    word = Word.query.get(word_id)
+
+    if is_right:
+        if word.status < 4:
+            word.status += 1
+    else:
+        if word.status > 0:
+            word.status -= 1
+
+    word.remember_time = round(time.time()) + INTERVALS[word.status]
+
+    return word.status

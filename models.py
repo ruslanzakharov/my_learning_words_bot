@@ -18,6 +18,8 @@ class User(Base):
     __tablename__ = 'Users'
 
     id = Column(Integer, primary_key=True)
+    chat_id = Column(Integer)
+    # True если бот отправил слово и ждет перевода
     is_waiting = Column(Boolean, default=False)
 
 

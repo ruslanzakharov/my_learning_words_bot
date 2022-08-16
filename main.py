@@ -3,7 +3,7 @@ import os
 
 import telegram.ext as tg_ext
 
-from bot import handlers
+from bot import handlers, send_messages
 
 TOKEN = os.getenv('TOKEN')
 
@@ -18,6 +18,7 @@ def main() -> None:
     application = tg_ext.ApplicationBuilder().token(TOKEN).build()
 
     handlers.setup_handlers(application)
+    send_messages.setup(application.bot)
 
     application.run_polling()
 

@@ -3,7 +3,7 @@ import sqlalchemy.orm as alc_orm
 
 import time
 
-from models import Word, User
+from database.models import Word, User
 
 # час, 5 часов, 5 дней, 25 дней, 4 месяца
 INTERVALS = [
@@ -18,10 +18,11 @@ engine = alc.create_engine('sqlite:///bot_db')
 session = alc_orm.sessionmaker(bind=engine)()
 
 
-def add_word(user_id: int, word: str, translation: str) -> None:
+def add_word(user_id: int, chat_id: int, word: str, translation: str) -> None:
     user_exists = not session.query(User).filter_by(id=user_id).first() is None
+    print(chat_id)
     if not user_exists:
-        user = User(id=user_id)
+        user = User(id=user_id, chat_id=chat_id)
         session.add(user)
 
     remember_time = round(time.time()) + INTERVALS[0]
@@ -49,19 +50,21 @@ def get_words_to_remember() -> list:
 
     users = session.query(User).filter_by(is_waiting=False)
     for user in users:
-        # Слово с самым ранним временем запоминания
-        word = session.query(Word).order_by(Word.remember_time).first()
-        if word.remember_time < time.time():
+        word = get_word_to_remember(user.id)
+        if word:
             words.append((word, user))
 
     return words
 
 
-def get_word_to_remember(user_id: int) -> tuple:
+def get_word_to_remember(user_id: int) -> Word | None:
+    """Получить первое слово для запоминания."""
     word = session.query(Word).filter_by(user_id=user_id).\
         order_by(Word.remember_time).first()
 
-    return word.word, word.translation, word.id
+    if word.remember_time < time.time():
+        return word
+    return None
 
 
 def update_word_status(word_id: int, is_right: bool) -> int:

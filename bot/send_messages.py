@@ -14,7 +14,7 @@ def send_words(bot: tg_ext.Application.bot) -> None:
         word_eng = word[0].word
         user = word[1]
 
-        bot.send_message(user.chat_id, word_eng)
+        bot.send_message(user.chat_id, f'Введите перевод: {word_eng}')
         db.change_is_waiting(user)
 
 

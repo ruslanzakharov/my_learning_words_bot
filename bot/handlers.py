@@ -3,7 +3,7 @@ import telegram.ext as tg_ext
 
 from database import db
 
-START, ENG_WORD, RU_WORD, WORD_CHECK = range(4)
+START, ENG_WORD, RU_WORD, WORD_CHECK, WORD_CHECK_NEW_WORD = range(5)
 
 
 async def start(
@@ -45,7 +45,7 @@ async def new_word_ru(
     eng_word = context.user_data['eng_word']
     user_id = update.effective_user.id
 
-    db.add_word(user_id, eng_word, ru_word)
+    db.add_word(user_id, update.effective_chat.id, eng_word, ru_word)
 
     keyboard = [['Новое слово']]
     reply_markup = tg.ReplyKeyboardMarkup(keyboard, one_time_keyboard=True)
@@ -57,7 +57,7 @@ async def new_word_ru(
 
 async def check_user_answer(
         update: tg.Update, context: tg_ext.ContextTypes.DEFAULT_TYPE
-) -> None:
+) -> int:
     word = db.get_word_to_remember(update.effective_user.id)
     context.user_data['word_id'] = word[2]
 
@@ -74,16 +74,35 @@ async def check_user_answer(
 
 async def check_user_answer_new_word(
     update: tg.Update, context: tg_ext.ContextTypes.DEFAULT_TYPE
-) -> None:
+) -> int:
+    """Получает новое слово либо предлагает ввести новое слово."""
     is_right = update.message.text == 'Да'
     db.update_word_status(context.user_data['word_id'], is_right)
 
-    # Сделать: Получить новое слово, если такое есть Либо предложить ввести новое слово
+    word = db.get_word_to_remember(update.effective_user.id)
+
+    if word:
+        await update.message.reply_text(f'Введите перевод: {word.eng}')
+        return WORD_CHECK_NEW_WORD
+
+    keyboard = [['Новое слово']]
+    reply_markup = tg.ReplyKeyboardMarkup(keyboard, one_time_keyboard=True)
+
+    await update.message.reply_text(
+        'Слова для повторения закончились',
+        reply_markup=reply_markup
+    )
+    return tg_ext.ConversationHandler.END
 
 
 def setup_handlers(application: tg_ext.Application) -> None:
     conv_handler = tg_ext.ConversationHandler(
-        entry_points=[tg_ext.CommandHandler('start', start)],
+        entry_points=[
+            tg_ext.CommandHandler('start', start),
+            tg_ext.MessageHandler(
+                tg_ext.filters.Regex('^Новое слово$'),
+                new_word),
+        ],
         states={
             START: [
                 tg_ext.MessageHandler(
@@ -97,7 +116,7 @@ def setup_handlers(application: tg_ext.Application) -> None:
                 tg_ext.MessageHandler(tg_ext.filters.TEXT, new_word_ru)
             ],
         },
-        fallbacks=[tg_ext.CommandHandler('start', start)],
+        fallbacks=[tg_ext.CommandHandler('start', start)]
     )
 
     check_word_conv_handler = tg_ext.ConversationHandler(
@@ -110,8 +129,11 @@ def setup_handlers(application: tg_ext.Application) -> None:
                     tg_ext.filters.Regex('^(Да|Нет)$'),
                     check_user_answer_new_word)
             ],
+            WORD_CHECK_NEW_WORD: [
+                tg_ext.MessageHandler(tg_ext.filters.TEXT, check_user_answer),
+            ]
         },
-        # Сделать: написать fallbacks
+        fallbacks=[tg_ext.CommandHandler('start', start)]
     )
 
     application.add_handler(conv_handler)
